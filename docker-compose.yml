@@ -1,0 +1,6 @@
+﻿services:
+  packageanalyzer:
+    image: packageanalyzer
+    build:
+      context: .
+      dockerfile: PackageAnalyzer/Dockerfile

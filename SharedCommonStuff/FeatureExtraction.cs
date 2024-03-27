@@ -20,7 +20,11 @@ public enum ExtractedFeatureType
     Async,
     Literals,
     VariableName,
-    HostEnvironmentObject
+    HostEnvironmentObject,
+    FunctionName,
+    FunctionArgumentCount,
+    FunctionArgumentLiterals,
+    ClassDeclarationName
 }
 
 public class Function
@@ -29,12 +33,12 @@ public class Function
     public ushort ArgumentCount { get; set; }
     public List<(string valueType, string value)> FixArgumentValues { get; set; } = new();
     public bool IsAsync { get; set; }
-    public List<(ExtractedFeatureType featureType, string data)> ExtractedFeatures { get; set; } = new();
+            public List<(ExtractedFeatureType featureType, string data)> ExtractedFeatures { get; set; } = new();
 
     public int GetFeatureCount()
     {
         int sum = 0;
-        sum += FixArgumentValues.Count;
+        //sum += FixArgumentValues.Count;
         sum += ExtractedFeatures.Count;
         return sum;
     }

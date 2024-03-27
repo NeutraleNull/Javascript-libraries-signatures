@@ -317,6 +317,6 @@ public class JavascriptHelper
         { ExtractedFeatureType.ControlFlow, 2 },
         { ExtractedFeatureType.Strings, 3 },
         { ExtractedFeatureType.ECMAObject, 3 },
-        { ExtractedFeatureType.VariableName, 0.8 },
+        { ExtractedFeatureType.VariableName, 0.5 },
     };
 }

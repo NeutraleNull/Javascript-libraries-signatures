@@ -96,7 +96,7 @@ app.AddCommand("download",
 app.AddCommand("extract", async (string folder, ushort parallelExtractions = 50) =>
 {
     AnsiConsole.WriteLine($"Start extraction. Scanning folder: {folder}");
-    var files = Directory.GetFiles(folder, "*.tgz");
+    var files = Directory.GetFiles(folder, "*.tgz", SearchOption.AllDirectories);
     AnsiConsole.WriteLine($"Found {files.Length} archives!");
     
     await AnsiConsole
@@ -104,18 +104,17 @@ app.AddCommand("extract", async (string folder, ushort parallelExtractions = 50)
         .HideCompleted(true)
         .StartAsync(async ctx =>
         {
-            var downloadTask  = ctx.AddTask("[green]Downloading libs [/]");
+            var downloadTask  = ctx.AddTask("[green]Unpacking libs: [/]");
             downloadTask.MaxValue = files.Length;
             downloadTask.StartTask();
 
             await Parallel.ForEachAsync(files, new ParallelOptions() { MaxDegreeOfParallelism = parallelExtractions }, async (file, token) =>
             {
                 var fileInfo = new FileInfo(file);
-                var task = ctx.AddTask(fileInfo.DirectoryName);
-                task.StartTask();
                 try
                 {
                     await ExtractTarball(file, fileInfo.DirectoryName!);
+                    AnsiConsole.MarkupLine($"Completed {fileInfo.DirectoryName}");
                 }
                 catch
                 {
@@ -123,7 +122,7 @@ app.AddCommand("extract", async (string folder, ushort parallelExtractions = 50)
                 }
                 finally
                 {
-                    task.StopTask();
+                    downloadTask.Increment(1);
                 }
             });
         });

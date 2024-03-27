@@ -1,6 +1,15 @@
-﻿services:
-  packageanalyzer:
-    image: packageanalyzer
-    build:
-      context: .
-      dockerfile: PackageAnalyzer/Dockerfile
+﻿version: '3'
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: pg
+      POSTGRES_PASSWORD: pgadmin
+      POSTGRES_DB: js_signatures
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:

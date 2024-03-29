@@ -5,6 +5,7 @@ using System.Transactions;
 using Cocona;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using MinHashSharp;
 using PackageAnalyzer;
 using SharedCommonStuff;
 using Spectre.Console;
@@ -57,7 +58,7 @@ app.AddCommand("extractFeatures", async (string inputDir, int parallelAnalysers 
         else
         {
             var libName = directoryInfo.Name;
-            packages.Add((libName, null, directoryInfo.GetDirectories ())!);
+            packages.Add((libName, null, directoryInfo.GetDirectories())!);
         }
     }
 
@@ -85,7 +86,63 @@ app.AddCommand("extractFeatures", async (string inputDir, int parallelAnalysers 
         });
     return 0;
 });
+
+app.AddCommand("analyzeFolders", async (string inputDir, string minSimilarity = "0.85", int parallelAnalysers = 5) =>
+{
+    double requiredSimilarity = double.Parse(minSimilarity);
+    var directoryInfo = new DirectoryInfo(inputDir);
+    if (!directoryInfo.Exists)
+    {
+        AnsiConsole.MarkupLine("[red]Input folder does not exist or is empty...[/]");
+        return -1;
+    }
+
+    var subFolders = directoryInfo.GetDirectories("*", SearchOption.TopDirectoryOnly);
     
+    AnsiConsole.MarkupLine("[green]Caching data...[/]");
+    using var context = new FunctionSignatureContext();
+    var data = await context.FunctionSignatures.AsNoTracking().ToListAsync();
+    AnsiConsole.MarkupLine("[green]Caching data completed...[/]");
+    
+    foreach (var subFolder in subFolders)
+    {
+        var files = Directory.GetFiles(subFolder.FullName, "*.*", SearchOption.AllDirectories)
+            .Where(x => x.EndsWith(".js") || x.EndsWith(".mjs"))
+            .Where(x => !x.Contains(".min.") && !x.Contains(".prod."));
+
+        await AnalyzeFiles(files.ToArray(), (float)requiredSimilarity, data);
+    }
+    
+    AnsiConsole.MarkupLine("[green]Processing completed.[/]");
+    
+    return 0;
+});
+
+app.AddCommand("analyzeFolder", async (string inputDir, float minSimilarity = 0.85f, int parallelAnalysers = 5) =>
+{
+    var directoryInfo = new DirectoryInfo(inputDir);
+    if (!directoryInfo.Exists)
+    {
+        AnsiConsole.MarkupLine("[red]Input folder does not exist or is empty...[/]");
+        return -1;
+    }
+
+    AnsiConsole.MarkupLine("[green]Caching data...[/]");
+    using var context = new FunctionSignatureContext();
+    var data = await context.FunctionSignatures.AsNoTracking().ToListAsync();
+    AnsiConsole.MarkupLine("[green]Caching data completed...[/]");
+    
+    var files = Directory.GetFiles(inputDir, "*.*", SearchOption.AllDirectories)
+            .Where(x => x.EndsWith(".js") || x.EndsWith(".mjs"))
+            .Where(x => !x.Contains(".min.") && !x.Contains(".prod."));
+
+    await AnalyzeFiles(files.ToArray(), minSimilarity, data);
+
+    AnsiConsole.MarkupLine("[green]Processing completed.[/]");
+    
+    return 0;
+});
+
 await app.RunAsync();
 return 0;
 
@@ -226,4 +283,75 @@ static bool IsModule(string filePath, string code)
     }
 
     return false;
+}
+
+async Task AnalyzeFiles(string[] files, float minSimilarity, List<FunctionSignature> data)
+{
+    var allExtractedFeatures = new Dictionary<string, List<(string Version, double Similarity)>>();
+    
+    foreach (var file in files)
+    {
+        var featureExtractor = new FeatureExtractor();
+        var code = await File.ReadAllTextAsync(file);
+        var features = featureExtractor.ExtractFeatures(code, IsModule(file, code));
+        
+        foreach (var feature in features.Functions)
+        {
+            var simHashGenerator = new SimHashGenerator(64, JavascriptHelper.DefaultWeights);
+            var simHash = simHashGenerator.GenerateSimHash(feature.ExtractedFeatures);
+            
+            var similarSimHashes = 
+                data.AsParallel().AsOrdered().Where(x => SimHashGenerator.GetSimilarity(x.SignatureSimhash, simHash) > minSimilarity).ToList();
+            
+            foreach (var functionSignature in similarSimHashes)
+            {
+                var similarity = SimHashGenerator.GetSimilarity(functionSignature.SignatureSimhash, simHash);
+                var libName = functionSignature.LibName;
+                var version = functionSignature.Version;
+
+                if (!allExtractedFeatures.ContainsKey(libName))
+                {
+                    allExtractedFeatures[libName] = new List<(string Version, double Similarity)>();
+                }
+
+                allExtractedFeatures[libName].Add((version, similarity));
+            }
+        }
+    }
+
+    var mostLikelyVersions = new Dictionary<string, (string Version, double Similarity, int Occurrences)>();
+
+    foreach (var (libName, versions) in allExtractedFeatures)
+    {
+        var groupedVersions = versions.GroupBy(x => x.Version);
+        var versionStats = groupedVersions.Select(g => (
+            Version: g.Key,
+            Similarity: g.Average(x => x.Similarity),
+            Occurrences: g.Count()
+        ));
+
+        var filteredVersions = versionStats.Where(x => x.Occurrences >= 5);
+
+        var valueTuples = filteredVersions as (string Version, double Similarity, int Occurrences)[] ?? filteredVersions.ToArray();
+        if (valueTuples.Any())
+        {
+            var maxOccurrences = valueTuples.Max(x => x.Occurrences);
+            var mostLikelyVersion = valueTuples.FirstOrDefault(x => x.Occurrences == maxOccurrences);
+
+            if (mostLikelyVersion != default)
+            {
+                mostLikelyVersions[libName] = (
+                    mostLikelyVersion.Version,
+                    mostLikelyVersion.Similarity,
+                    mostLikelyVersion.Occurrences
+                );
+            }
+        }
+    }
+
+    AnsiConsole.MarkupLine($"[yellow]Most Likely Versions across all files and functions (with at least 5 occurrences):[/]");
+    foreach (var kvp in mostLikelyVersions)
+    {
+        AnsiConsole.MarkupLine($"Library: {kvp.Key}, Version: {kvp.Value.Version}, Similarity: {kvp.Value.Similarity}, Occurrences: {kvp.Value.Occurrences}");
+    }
 }

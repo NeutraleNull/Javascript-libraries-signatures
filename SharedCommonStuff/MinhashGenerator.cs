@@ -11,19 +11,8 @@ public class MinHashGenerator
         hash.Update(input.Select(x => x.data).ToArray());
         return hash;
     }
-}
-
-public static class MinHashExtension
-{
-    public static byte[] GetByteHash(this MinHash minHash)
-    {
-        var values = minHash.HashValues(0, 1024);
-        var outputHash = new byte[values.Length * sizeof(uint)];
-        Buffer.BlockCopy(values, 0, outputHash, 0, outputHash.Length);
-        return outputHash;
-    }
-
-    public static MinHash GetMinHashFromBytes(this MinHash minHash, int randomNumberPermutations, byte[] input)
+    
+    public static MinHash GetMinHashFromBytes(int randomNumberPermutations, byte[] input)
     {
         var minhash = new MinHash(randomNumberPermutations, 1337);
 
@@ -34,7 +23,18 @@ public static class MinHashExtension
         Buffer.BlockCopy(input, 0, uintArray, 0, input.Length);
         
         // Set the value of the _hashValues field using reflection
-        hashValuesField?.SetValue(minHash, uintArray);
+        hashValuesField?.SetValue(minhash, uintArray);
         return minhash;
+    }
+}
+
+public static class MinHashExtension
+{
+    public static byte[] GetByteHash(this MinHash minHash)
+    {
+        var values = minHash.HashValues(0, 1024);
+        var outputHash = new byte[values.Length * sizeof(uint)];
+        Buffer.BlockCopy(values, 0, outputHash, 0, outputHash.Length);
+        return outputHash;
     }
 }

@@ -14,7 +14,11 @@ public class PackageIndexer
     {
         var versionDirs = packageDirectory.GetDirectories();
         progressTask.MaxValue = versionDirs.Length;
-        await Parallel.ForEachAsync(versionDirs, token,  async (versionDir, cancellationToken) =>
+        await Parallel.ForEachAsync(versionDirs, new ParallelOptions
+        {
+            CancellationToken = token,
+            MaxDegreeOfParallelism = maxParallelVersionIndexer
+        },  async (versionDir, cancellationToken) =>
             await ProcessVersionAsync(packageDirectory, versionDir, namespaceName, serviceProvider, cancellationToken, progressTask));
         progressTask.StopTask();
     }
@@ -64,7 +68,6 @@ public class PackageIndexer
         
         try
         {
-            await database.Database.OpenConnectionAsync(cancellationToken);
             await database.FunctionSignatures.AddRangeAsync(librarySignatures, cancellationToken);
             await database.SaveChangesAsync(cancellationToken);
         } 

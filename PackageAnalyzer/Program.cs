@@ -10,6 +10,7 @@ AnsiConsole.WriteLine("Starting up");
 var builder = CoconaApp.CreateBuilder();
 builder.Services.AddPostgresDB();
 builder.Logging.ClearProviders();
+Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "logs"));
 builder.Logging.AddFile(options =>
 {
     options.RootPath = Path.Combine(AppContext.BaseDirectory, "logs");

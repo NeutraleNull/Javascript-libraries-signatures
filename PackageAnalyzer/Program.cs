@@ -15,7 +15,7 @@ Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "logs"));
 builder.Logging.AddFile(options =>
 {
     options.RootPath = Path.Combine(AppContext.BaseDirectory, "logs");
-    options.Files = new[] { new LogFileOptions { Path = "FileAnalyzer-<counter>.log" } };
+    options.Files = [new LogFileOptions { Path = "FileAnalyzer-<counter>.log" }];
 });
 var app = builder.Build();
 

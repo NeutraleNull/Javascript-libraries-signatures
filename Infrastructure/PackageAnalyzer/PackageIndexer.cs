@@ -51,7 +51,7 @@ public class PackageIndexer
             catch (Exception ex)
             {
                 logger.LogWarning("Failed to index file: {0}!", file);
-                logger.LogError(ex.Message);
+                logger.LogWarning(ex.Message);
             }
         }
 
@@ -64,14 +64,14 @@ public class PackageIndexer
         
         try
         {
-            database.Database.SetCommandTimeout(TimeSpan.FromSeconds(180));
+            await database.Database.OpenConnectionAsync(cancellationToken);
             await database.FunctionSignatures.AddRangeAsync(librarySignatures, cancellationToken);
             await database.SaveChangesAsync(cancellationToken);
         } 
         catch (Exception ex)
         {
-            logger.LogWarning("Failed insert signatures to database for folder: {0}!", versionDir.FullName);
-            logger.LogError(ex.Message);
+            logger.LogCritical("Failed insert signatures to database for folder: {0}!", versionDir.FullName);
+            logger.LogError(ex.InnerException != null ? ex.InnerException.Message : ex.Message);
         }
         finally
         {

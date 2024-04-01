@@ -3,9 +3,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure.Database;
 
-public class FunctionSignatureContext() : DbContext
+public class FunctionSignatureContext : DbContext
 {
     public DbSet<FunctionSignature> FunctionSignatures { get; set; }
+    
+    public FunctionSignatureContext(DbContextOptions<FunctionSignatureContext> options)
+        : base(options)
+    {
+    }
+
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

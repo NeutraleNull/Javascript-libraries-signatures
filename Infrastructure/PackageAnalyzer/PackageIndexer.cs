@@ -1,6 +1,7 @@
 ﻿using Infrastructure.Database;
 using Infrastructure.Parser;
 using Infrastructure.SignatureGeneration;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -42,6 +43,8 @@ public class PackageIndexer
                 var featureExtractor = new JavascriptFeatureExtractor();
                 var code = await File.ReadAllTextAsync(file, cancellationToken);
                 var features = featureExtractor.ExtractFeatures(code, file, HelperFunctions.IsModule(file, code));
+                //filter
+                features = features.Where(x => x.ExtractedFeatures.Count > 100).ToList();
                 librarySignatures.AddRange(ProcessFunctions(features));
                 
             }
@@ -61,10 +64,9 @@ public class PackageIndexer
         
         try
         {
-            var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+            database.Database.SetCommandTimeout(TimeSpan.FromSeconds(180));
             await database.FunctionSignatures.AddRangeAsync(librarySignatures, cancellationToken);
             await database.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
         } 
         catch (Exception ex)
         {
@@ -80,12 +82,16 @@ public class PackageIndexer
 
     private IEnumerable<FunctionSignature> ProcessFunctions(List<Function> functions)
     {
-        return functions.Select(function => new FunctionSignature()
+        foreach (var function in functions)
         {
-            CreationDateTime = DateTime.UtcNow,
-            FunctionName = function.FunctionName,
-            SignatureSimhash = SimHash.ComputeSimHash(function.ExtractedFeatures, Weights.DefaultWeights),
-            SignatureMinhash = MinHash.ComputeMinHash(function.ExtractedFeatures.Select(x => x.data).ToList())
-        });
+            var signature = new FunctionSignature()
+            {
+                CreationDateTime = DateTime.UtcNow, FunctionName = function.FunctionName,
+                SignatureSimhash = SimHash.ComputeSimHash(function.ExtractedFeatures, Weights.DefaultWeights),
+                SignatureMinhash = MinHash.ComputeMinHash(function.ExtractedFeatures.Select(x => x.data).ToList())
+            };
+
+            yield return signature;
+        }
     }
 }

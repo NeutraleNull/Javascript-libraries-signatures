@@ -1,5 +1,6 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
+using FastHashes;
 
 namespace Infrastructure.SignatureGeneration;
 
@@ -7,8 +8,10 @@ namespace Infrastructure.SignatureGeneration;
 public static class SimHash
 {
     // Change this to modify the HashSize. Be careful it won't be compatible out of the box
-    // with how the database entries and the band logic is impelemented
-    private const int HashSize = 512;
+    // with how the database entries and the band logic is implemented
+    private const int HashSize = 256;
+
+    private const int Seed = 1337;
 
     /// <summary>
     /// First we create a vector for the amount of bit length we have.
@@ -27,7 +30,9 @@ public static class SimHash
         var vector = new double[HashSize];
         foreach (var featuresWithWeight in elementExtractedFeatures)
         {
-            byte[] hash = SHA512.HashData(Encoding.UTF8.GetBytes(featuresWithWeight.Data));
+            var highwayHash = new HighwayHash256(1337);
+            
+            byte[] hash = highwayHash.ComputeHash(Encoding.UTF8.GetBytes(featuresWithWeight.Data).AsMemory().Span);
             // Go through each bit. Assume we use an 64-bit hash
             for(int j=0; j < HashSize; j++)
             {

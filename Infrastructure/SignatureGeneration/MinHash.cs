@@ -1,45 +1,64 @@
 ﻿
 using System.Security.Cryptography;
 using System.Text;
+using FastHashes;
 using MathNet.Numerics.Random;
 
 namespace Infrastructure.SignatureGeneration;
 
 public static class MinHash
 {
-    private const int NumberHashFunctions = 256;
+    private const int NumHashFunctions = 128;
     private const int Seed = 1337;
-    
+    private static readonly int[][] Coefficients;
+
+    // compute once and cache
+    static MinHash()
+    {
+        Random random = new Random(Seed);
+        Coefficients = new int[NumHashFunctions][];
+
+        for (int i = 0; i < NumHashFunctions; i++)
+        {
+            Coefficients[i] = new int[] { random.Next(1, int.MaxValue), random.Next(0, int.MaxValue) };
+        }
+    }
+
     public static int[] ComputeMinHash(List<string> features)
     {
-        var rng = new Random(Seed);
-        
-        // Create an array of size numHashFunctions to store minimum hash results for each hash function
-        int[] minHashes = new int[NumberHashFunctions];
-        for (var i = 0; i < minHashes.Length; i++)
-        {
-            // Initialize the array elements to a large value
-            minHashes[i] = int.MaxValue;
-        }
+        int[] minHashValues = Enumerable.Repeat(int.MaxValue, NumHashFunctions).ToArray();
 
-        foreach (var feature in features)
+        foreach (string feature in features)
         {
-            for (var i = 0; i < NumberHashFunctions; i++)
+            int[] hashValues = GetHashValues(feature);
+
+            for (int i = 0; i < NumHashFunctions; i++)
             {
-                var seedNumber = rng.Next();
-                var hash = SHA256.HashData(Encoding.UTF8.GetBytes(feature));
-                var hashedValue = BitConverter.ToInt32(hash, 0) ^ seedNumber;
-
-                if (hashedValue < minHashes[i])
-                {
-                    minHashes[i] = hashedValue;
-                }
+                minHashValues[i] = Math.Min(minHashValues[i], hashValues[i]);
             }
         }
 
-        return minHashes;
+        return minHashValues;
     }
-    
+
+    private static int[] GetHashValues(string feature)
+    {
+        int[] hashValues = new int[NumHashFunctions];
+        var featureBytes = Encoding.UTF8.GetBytes(feature).AsMemory();
+
+        for (int i = 0; i < NumHashFunctions; i++)
+        {
+            int a = Coefficients[i][0];
+            int b = Coefficients[i][1];
+            var murmurHashGenerator = new MurmurHash32(Seed);
+            var hash = BitConverter.ToInt32(murmurHashGenerator.ComputeHash(featureBytes.Span));
+            //uint hash = MurmurHash3(featureBytes, Seed);
+            hashValues[i] = (int)((a * hash + b) % uint.MaxValue);
+        }
+
+        return hashValues;
+    }
+
     public static double GetSimilarity(int[] minHashes1, int[] minHashes2)
     {
         if (minHashes1.Length != minHashes2.Length)

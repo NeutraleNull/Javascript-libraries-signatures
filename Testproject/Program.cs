@@ -21,11 +21,11 @@ Console.WriteLine("Time: {0}", watch.Elapsed);
 //stuff = stuff.Where(x => x.ExtractedFeatures.Count).ToList();
 
 
-var previousSimHash = new ulong[512 / sizeof(ulong)];
-var defaultSimHash = new ulong[512 / sizeof(ulong)];
+var previousSimHash = new ulong[256 / sizeof(ulong)];
+var defaultSimHash = new ulong[256 / sizeof(ulong)];
 
-var previousMinHash = new int[256];
-var defaultMinHash = new int[256];
+var previousMinHash = new int[128];
+var defaultMinHash = new int[128];
 foreach (var element in stuff.Where(x => x.ExtractedFeatures.Count > 150))
 {
     var simHash = SimHash.ComputeSimHash(element.ExtractedFeatures, Weights.DefaultWeights);
@@ -34,7 +34,7 @@ foreach (var element in stuff.Where(x => x.ExtractedFeatures.Count > 150))
         ConvertUlongToHex(simHash),
         SimHash.SimilarityPercentage(previousSimHash, simHash),
         SimHash.SimilarityPercentage(defaultSimHash, simHash));
-
+    
     var minHash = MinHash.ComputeMinHash(element.ExtractedFeatures.Select(x => x.data).ToList());
     Console.WriteLine("-----------\nMinHash: {0}\nSimilarity previous: {1}\n Similarity default: {2}",
         ConvertIntToHex(minHash),

@@ -53,9 +53,14 @@ public static class FunctionSignatureContextExtension
 {
     public static void AddPostgresDB(this IServiceCollection serviceCollection)
     {
-        serviceCollection.AddDbContext<FunctionSignatureContext>(options =>
+        serviceCollection.AddDbContextPool<FunctionSignatureContext>(options =>
         {
-            options.UseNpgsql("Host=localhost;Database=js_signatures;Username=pg;Password=pgadmin")
+            options.UseNpgsql("Host=localhost;Database=js_signatures;Username=pg;Password=pgadmin", pgOptions =>
+                {
+                    pgOptions.CommandTimeout(0);
+                    pgOptions.EnableRetryOnFailure(10);
+                    pgOptions.MaxBatchSize(10000);
+                })
                 .UseSnakeCaseNamingConvention()
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });

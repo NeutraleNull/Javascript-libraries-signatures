@@ -17,8 +17,6 @@ public class FunctionSignatureContext : DbContext
     {
         modelBuilder.Entity<FunctionSignature>(entity =>
         {
-            entity.ToTable("function_signatures");
-
             entity.HasKey(e => e.Id);
 
             entity.Property(e => e.LibName)

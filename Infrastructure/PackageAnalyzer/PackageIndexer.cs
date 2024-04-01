@@ -56,6 +56,7 @@ public class PackageIndexer
         {
             librarySignature.Namespace = namespaceName;
             librarySignature.LibName = packageDirectory.Name;
+            librarySignature.Version = versionDir.Name;
         }
         
         try

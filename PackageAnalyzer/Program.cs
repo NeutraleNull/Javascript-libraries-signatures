@@ -1,6 +1,7 @@
 ﻿using Cocona;
 using Infrastructure.Database;
 using Infrastructure.PackageAnalyzer;
+using Karambolo.Extensions.Logging.File;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -14,6 +15,7 @@ Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "logs"));
 builder.Logging.AddFile(options =>
 {
     options.RootPath = Path.Combine(AppContext.BaseDirectory, "logs");
+    options.Files = new[] { new LogFileOptions { Path = "FileAnalyzer-<counter>.log" } };
 });
 var app = builder.Build();
 

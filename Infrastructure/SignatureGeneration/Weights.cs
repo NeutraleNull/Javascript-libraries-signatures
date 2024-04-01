@@ -9,14 +9,17 @@ public static class Weights
     /// </summary>
     public static readonly Dictionary<ExtractedFeatureType, double> DefaultWeights = new()
     {
-        { ExtractedFeatureType.Syntax, 1 },
+        { ExtractedFeatureType.Syntax, 0.5 },
         { ExtractedFeatureType.Async, 1.5 },
         { ExtractedFeatureType.Literals, 1.5 },
-        { ExtractedFeatureType.HostEnvironmentObject, 1 },
-        { ExtractedFeatureType.ControlFlow, 2 },
-        { ExtractedFeatureType.Strings, 3 },
-        { ExtractedFeatureType.ECMAObject, 3 },
+        { ExtractedFeatureType.HostEnvironmentObject, 1.5 },
+        { ExtractedFeatureType.ControlFlow, 1.5 },
+        { ExtractedFeatureType.Strings, 2 },
+        { ExtractedFeatureType.ECMAObject, 2 },
         { ExtractedFeatureType.VariableName, 0.5 },
         { ExtractedFeatureType.CodeStructure, 0.1 },
+        { ExtractedFeatureType.FunctionArgumentCount, 2},
+        { ExtractedFeatureType.Types, 2},
+        { ExtractedFeatureType.FunctionName, 0.5}
     };
 }

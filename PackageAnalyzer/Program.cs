@@ -12,6 +12,7 @@ var builder = CoconaApp.CreateBuilder();
 builder.Services.AddPostgresDB();
 builder.Logging.ClearProviders();
 Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "logs"));
+builder.Logging.SetMinimumLevel(LogLevel.Warning);
 builder.Logging.AddFile(options =>
 {
     options.RootPath = Path.Combine(AppContext.BaseDirectory, "logs");

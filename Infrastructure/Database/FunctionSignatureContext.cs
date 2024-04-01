@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Database;
 
@@ -41,6 +42,9 @@ public class FunctionSignatureContext : DbContext
 
             entity.Property(e => e.SignatureSimhash)
                 .IsRequired();
+
+            entity.HasIndex(e => e.SignatureSimhash);
+            entity.HasIndex(e => e.SignatureMinhash);
         });
     }
 }

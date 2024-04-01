@@ -9,6 +9,7 @@ using Spectre.Console;
 AnsiConsole.WriteLine("Starting up");
 var builder = CoconaApp.CreateBuilder();
 builder.Services.AddPostgresDB();
+builder.Logging.ClearProviders();
 builder.Logging.AddFile(options =>
 {
     options.RootPath = Path.Combine(AppContext.BaseDirectory, "logs");

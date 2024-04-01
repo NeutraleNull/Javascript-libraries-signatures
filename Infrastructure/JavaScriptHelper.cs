@@ -1,8 +1,8 @@
-﻿namespace SharedCommonStuff;
+﻿namespace Infrastructure;
 
-public class JavascriptHelper
+public static class JavaScriptHelper
 {
-    public static string[] AsyncIdentifiers =
+    public static readonly string[] AsyncIdentifiers =
     [
         "Promise",
         "resolve",
@@ -10,7 +10,7 @@ public class JavascriptHelper
         "setInterval"
     ];
 
-    public static string[] HostEnvironmentObjects =
+    public static readonly string[] HostEnvironmentObjects =
     [
         "window",
         "self",
@@ -307,16 +307,4 @@ public class JavascriptHelper
         "undefined",
         "unescape"
     ];
-
-    public static Dictionary<ExtractedFeatureType, double> DefaultWeights = new()
-    {
-        { ExtractedFeatureType.Syntax, 1 },
-        { ExtractedFeatureType.Async, 1.5 },
-        { ExtractedFeatureType.Literals, 1.5 },
-        { ExtractedFeatureType.HostEnvironmentObject, 1 },
-        { ExtractedFeatureType.ControlFlow, 2 },
-        { ExtractedFeatureType.Strings, 3 },
-        { ExtractedFeatureType.ECMAObject, 3 },
-        { ExtractedFeatureType.VariableName, 0.5 },
-    };
 }

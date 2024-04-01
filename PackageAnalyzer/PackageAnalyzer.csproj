@@ -16,6 +16,7 @@
 
     <ItemGroup>
       <PackageReference Include="Cocona" Version="2.2.0" />
+      <PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.5.0" />
       <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.3" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.3" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.3" />
@@ -24,7 +25,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\SharedCommonStuff\SharedCommonStuff.csproj" />
+      <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
     </ItemGroup>
 
 </Project>

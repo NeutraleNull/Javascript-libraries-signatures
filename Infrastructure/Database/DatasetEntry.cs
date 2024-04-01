@@ -1,9 +1,8 @@
 ﻿// Root myDeserializedClass = JsonSerializer.Deserialize<Root>(myJsonResponse);
 
-using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace SharedCommonStuff;
+namespace Infrastructure.Database;
 
 public class DatasetEntry
 {

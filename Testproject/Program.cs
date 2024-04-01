@@ -1,58 +1,75 @@
-﻿using System.Security.AccessControl;
-using Esprima;
-using Esprima.Utils;
+﻿using System.Diagnostics;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Infrastructure.Parser;
+using Infrastructure.SignatureGeneration;
 using Spectre.Console;
 
-using System.Windows;
-using SharedCommonStuff;
-
-AnsiConsole.WriteLine("Provide file path: ");
+//AnsiConsole.WriteLine("Provide file path: ");
 //var filePath = Console.ReadLine();
 
-var code = File.ReadAllText("D:\\uni\\projektgruppe\\Ausarbeitung\\jquery.js");
+var jsQuery = "D:\\uni\\projektgruppe\\Ausarbeitung\\jquery.js";
 
-JavaScriptParser parser = new JavaScriptParser();
-var stuff = parser.ParseScript(code);
-//Console.WriteLine(stuff.ToJsonString());
 
-await File.WriteAllTextAsync("D:\\uni\\projektgruppe\\Ausarbeitung\\ast.json", stuff.ToJsonString());
+var featureExtractor = new JavascriptFeatureExtractor();
+var watch = new Stopwatch();
+watch.Start();
+var stuff = await featureExtractor.ExtractFeaturesAsync(File.ReadAllText(jsQuery), jsQuery, false);
+watch.Stop();
+Console.WriteLine("Time: {0}", watch.Elapsed);
+//stuff = stuff.Where(x => x.ExtractedFeatures.Count).ToList();
 
-FeatureExtractor extractor = new FeatureExtractor();
-var exported = extractor.ExtractFeatures(code);
 
-var generator = new SimHashGenerator(JavascriptHelper.DefaultWeights, 10, 3, 50);
-var lastHash = new byte[64];
-var lastHash2 = new byte[64];
-foreach (var export in exported.Functions)
+var previousSimHash = new ulong[512 / sizeof(ulong)];
+var defaultSimHash = new ulong[512 / sizeof(ulong)];
+
+var previousMinHash = new int[256];
+var defaultMinHash = new int[256];
+foreach (var element in stuff.Where(x => x.ExtractedFeatures.Count > 150))
 {
-    if (export.ExtractedFeatures.Count < 100) continue;
-    var hash = generator.Generate(export.ExtractedFeatures);
-    var similarity = SimHashGenerator.CalculateSimilarity(hash, lastHash);
-    lastHash = hash;
-    AnsiConsole.WriteLine(
-        $"Function: {export.FunctionName} Hash:{BitConverter.ToString(hash).Replace("-", "")}, Similarity to last hash: {similarity}");
+    var simHash = SimHash.ComputeSimHash(element.ExtractedFeatures, Weights.DefaultWeights);
+    Console.WriteLine("Function: {0}\nSimHash: {1}\nSimilarity previous: {2}\n Similarity default: {3}",
+        element.FunctionName,
+        ConvertUlongToHex(simHash),
+        SimHash.SimilarityPercentage(previousSimHash, simHash),
+        SimHash.SimilarityPercentage(defaultSimHash, simHash));
+
+    var minHash = MinHash.ComputeMinHash(element.ExtractedFeatures.Select(x => x.data).ToList());
+    Console.WriteLine("-----------\nMinHash: {0}\nSimilarity previous: {1}\n Similarity default: {2}",
+        ConvertIntToHex(minHash),
+        MinHash.GetSimilarity(previousMinHash, minHash),
+        MinHash.GetSimilarity(defaultMinHash, minHash));
+    
+    Console.WriteLine("");
+    previousSimHash = simHash;
+    previousMinHash = minHash;
+    //Console.WriteLine(".................\n{0}\n{1}\n{2}\n", element.FunctionName, element.ArgumentCount,
+    //    string.Join(";", element.ExtractedFeatures.Select(x => x.data)));
 }
 
-AnsiConsole.WriteLine("[yellow] Alternate simhash [/yellow]");
-foreach (var export in exported.Functions)
+string ConvertUlongToHex (ulong[] values)
 {
-    var simhash = new SimHash(512 / 8, JavascriptHelper.DefaultWeights);
-    var hash = simhash.GenerateSimHash(export.ExtractedFeatures);
-    var similarity = SimHash.GetSimilarity(hash, lastHash2);
-    lastHash2 = hash;
-    AnsiConsole.WriteLine($"Function: {export.FunctionName} Hash: {BitConverter.ToString(hash).Replace("-","")} Similarity: {similarity}");
+    StringBuilder sb = new StringBuilder();
+
+    foreach(ulong value in values)
+    {
+        // Converts the ulong value to hex and appends it to the StringBuilder
+        sb.Append(value.ToString("X"));
+    }
+
+    return sb.ToString();
 }
 
-
-MinHashBoxed lastMinhash = null;
-var minhashGenerator = new MinhashGenerator();
-foreach (var export in exported.Functions)
+string ConvertIntToHex (int[] values)
 {
-    if (export.ExtractedFeatures.Count < 100) continue;
+    StringBuilder sb = new StringBuilder();
 
-    var minhash = new MinHashBoxed(minhashGenerator.GetHash(export.ExtractedFeatures));
-    if (lastMinhash != null)
-        AnsiConsole.WriteLine($"Function: {export.FunctionName} Similarity to last hash: {minhash.GetDistance(lastMinhash)}");
-    lastMinhash = minhash;
+    foreach(int value in values)
+    {
+        // Converts the ulong value to hex and appends it to the StringBuilder
+        sb.Append(value.ToString("X"));
+    }
+
+    return sb.ToString();
 }
-Console.WriteLine();

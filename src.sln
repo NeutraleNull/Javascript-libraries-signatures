@@ -7,7 +7,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		docker-compose.yml = docker-compose.yml
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedCommonStuff", "SharedCommonStuff\SharedCommonStuff.csproj", "{64ADC01E-0F1A-44B9-A1DD-8F6772A6401C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "Infrastructure\Infrastructure.csproj", "{64ADC01E-0F1A-44B9-A1DD-8F6772A6401C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PackageDownloader", "PackageDownloader\PackageDownloader.csproj", "{AFE758D3-6F8E-4BF7-BE28-848234B439E9}"
 EndProject

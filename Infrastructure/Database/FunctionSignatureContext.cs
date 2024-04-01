@@ -1,20 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace PackageAnalyzer;
-
-using Microsoft.EntityFrameworkCore;
+namespace Infrastructure.Database;
 
 public class FunctionSignatureContext() : DbContext
 {
     public DbSet<FunctionSignature> FunctionSignatures { get; set; }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        //optionsBuilder.UseSqlite($"Data Source={sqlFilePath}", options =>
-        //{
-        //});
-        optionsBuilder.UseNpgsql("Host=localhost;Database=js_signatures;Username=pg;Password=pgadmin");
-    }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,15 +41,13 @@ public class FunctionSignatureContext() : DbContext
     }
 }
 
-public class FunctionSignature
+public static class FunctionSignatureContextExtension
 {
-    [Key]
-    public int Id { get; set; }
-    public string LibName { get; set; }
-    public string? Namespace { get; set; }
-    public string Version { get; set; }
-    public string FunctionName { get; set; }
-    public DateTime CreationDateTime { get; set; } = DateTime.UtcNow;
-    public byte[] SignatureMinhash { get; set; }
-    public byte[] SignatureSimhash { get; set; }
+    public static void AddPostgresDB(this IServiceCollection serviceCollection)
+    {
+        serviceCollection.AddDbContextPool<FunctionSignatureContext>(options =>
+        {
+            options.UseNpgsql("Host=localhost;Database=js_signatures;Username=pg;Password=pgadmin").UseSnakeCaseNamingConvention();
+        });
+    } 
 }

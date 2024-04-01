@@ -70,7 +70,7 @@ app.AddCommand("extractFeatures", async (IServiceProvider serviceProvider, Funct
                 {
                     var task = ctx.AddTask($"Processing package: {package.NamepaceName}{(string.IsNullOrWhiteSpace(package.NamepaceName)? "" :  "/")}{package.Package.Name}");
                     var indexer = new PackageIndexer();
-                    await indexer.IndexPackageAsync(package.Package, parallelAnalysers * 5, package.NamepaceName,
+                    await indexer.IndexPackageAsync(package.Package, Math.Max(4, parallelAnalysers * 2) , package.NamepaceName,
                         serviceProvider, cancellationToken, task);
                     task.StopTask();
                     progressTask.Increment(1);

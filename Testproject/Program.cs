@@ -15,7 +15,7 @@ var jsQuery = "D:\\uni\\projektgruppe\\Ausarbeitung\\jquery.js";
 var featureExtractor = new JavascriptFeatureExtractor();
 var watch = new Stopwatch();
 watch.Start();
-var stuff = await featureExtractor.ExtractFeaturesAsync(File.ReadAllText(jsQuery), jsQuery, false);
+var stuff = featureExtractor.ExtractFeatures(File.ReadAllText(jsQuery), jsQuery, false);
 watch.Stop();
 Console.WriteLine("Time: {0}", watch.Elapsed);
 //stuff = stuff.Where(x => x.ExtractedFeatures.Count).ToList();

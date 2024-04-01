@@ -22,9 +22,9 @@ public class PackageIndexer
         string? namespaceName, IServiceProvider serviceProvider, CancellationToken cancellationToken,
         ProgressTask progressTask)
     {
-        var scope = serviceProvider.CreateScope();
+        using var scope = serviceProvider.CreateScope();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<PackageIndexer>>();
-        var database = scope.ServiceProvider.GetRequiredService<FunctionSignatureContext>();
+        await using var database = scope.ServiceProvider.GetRequiredService<FunctionSignatureContext>();
         
         // Get all javascript files that matter in the version folder
         // we filter out already minimized production ready stuff (we don't want to index twice, prevent duplicates yk)

@@ -58,7 +58,7 @@ public static class FunctionSignatureContextExtension
             options.UseNpgsql("Host=localhost;Database=js_signatures;Username=pg;Password=pgadmin", pgOptions =>
                 {
                     pgOptions.CommandTimeout(180);
-                    pgOptions.EnableRetryOnFailure(10);
+                    pgOptions.EnableRetryOnFailure(15, TimeSpan.FromSeconds(15), null);
                     pgOptions.MaxBatchSize(10000);
                 })
                 .UseSnakeCaseNamingConvention()

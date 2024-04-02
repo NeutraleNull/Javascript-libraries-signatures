@@ -1,4 +1,6 @@
-﻿using Infrastructure.Database;
+﻿using System.ComponentModel;
+using EFCore.BulkExtensions;
+using Infrastructure.Database;
 using Infrastructure.Parser;
 using Infrastructure.SignatureGeneration;
 using Microsoft.EntityFrameworkCore;
@@ -66,6 +68,9 @@ public class PackageIndexer
             librarySignature.Version = versionDir.Name;
         }
         
+        int retryAttempt = 0;
+        repeat:
+        
         try
         {
             await database.FunctionSignatures.AddRangeAsync(librarySignatures, cancellationToken);
@@ -73,8 +78,12 @@ public class PackageIndexer
         } 
         catch (Exception ex)
         {
-            logger.LogCritical("Failed insert signatures to database for folder: {0}!", versionDir.FullName);
-            logger.LogError(ex.InnerException != null ? ex.InnerException.Message : ex.Message);
+            if (retryAttempt++ > 10)
+            {
+                logger.LogCritical("Failed insert signatures to database for folder: {0} for {1} times!", versionDir.FullName, retryAttempt);
+                logger.LogError(ex.InnerException != null ? ex.InnerException.Message : ex.Message);
+            }
+            goto repeat;
         }
         finally
         {

@@ -108,12 +108,12 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
         Console.WriteLine("~~~~~ MINHASH ~~~~~~~");
         foreach (var element in mostLikelyVersionsMinHashes)
         {
-            Console.WriteLine("NS; {0}; Library; {1}; Occurence; {2}; Confidence; {3}", element.Value.Namespace, element.Value.LibName, element.Value.Occurrences, element.Value.Similarity);
+            Console.WriteLine("NS; {0}; Library; {1}; Version; {4}; Occurence; {2}; Confidence; {3}", element.Value.Namespace, element.Value.LibName, element.Value.Occurrences, element.Value.Similarity, element.Value.Version);
         }
         Console.WriteLine("~~~~~ SIMHASH ~~~~~~~");
         foreach (var element in mostLikelyVersionsSimHashes)
         {
-            Console.WriteLine("NS; {0}; Library; {1}; Occurence; {2}; Confidence; {3}", element.Value.Namespace, element.Value.LibName, element.Value.Occurrences, element.Value.Similarity);
+            Console.WriteLine("NS; {0}; Library; {1}; Version; {4}; Occurence; {2}; Confidence; {3}", element.Value.Namespace, element.Value.LibName, element.Value.Occurrences, element.Value.Similarity, element.Value.Version);
         }
     }
     

@@ -82,8 +82,9 @@ app.AddCommand("extractFeatures", async (IServiceProvider serviceProvider, Funct
     return 0;
 });
 
-app.AddCommand("analyzeFolders", async (IServiceProvider serviceProvider, CancellationToken token, string inputDir, double minSimilarity = 0.9) =>
+app.AddCommand("analyzeFolders", async (IServiceProvider serviceProvider, string inputDir, double minSimilarity = 0.9) =>
 {
+    var token = new CancellationTokenSource().Token;
     var directoryInfo = new DirectoryInfo(inputDir);
     if (!directoryInfo.Exists)
     {

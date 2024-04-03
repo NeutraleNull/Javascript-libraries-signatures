@@ -82,7 +82,7 @@ app.AddCommand("extractFeatures", async (IServiceProvider serviceProvider, Funct
     return 0;
 });
 
-app.AddCommand("analyzeFolders", async (IServiceProvider serviceProvider, string inputDir, double minSimilarity = 0.9) =>
+app.AddCommand("analyzeFolders", async (IServiceProvider serviceProvider, string inputDir, double minSimilarity = 90, int extractionThreshold = 150) =>
 {
     var token = new CancellationTokenSource().Token;
     var directoryInfo = new DirectoryInfo(inputDir);
@@ -106,7 +106,7 @@ app.AddCommand("analyzeFolders", async (IServiceProvider serviceProvider, string
     foreach (var subFolder in subFolders)
     {
         stopWatch.Restart();
-        await packageRecognizers.AnalyseFolderAsync(subFolder, minSimilarity, 150, token);
+        await packageRecognizers.AnalyseFolderAsync(subFolder, minSimilarity, extractionThreshold, token);
         AnsiConsole.MarkupLine("[yellow] Folder analyze completed {0}! [/]", stopWatch.Elapsed);
     }
     

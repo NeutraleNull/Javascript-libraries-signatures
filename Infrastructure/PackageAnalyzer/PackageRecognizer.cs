@@ -15,7 +15,7 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
     {
         using var scope = serviceProvider.CreateScope();
         await using var dbContext = scope.ServiceProvider.GetRequiredService<FunctionSignatureContext>();
-        DataSet = await dbContext.FunctionSignatures.ToListAsync(cancellationToken: cancellationToken);
+        DataSet = await dbContext.FunctionSignatures.AsNoTracking().ToListAsync(cancellationToken: cancellationToken);
     }
 
     public async Task AnalyseFolderAsync(DirectoryInfo folderDirectory, double minSimilarity, int extractionThreshold, CancellationToken cancellationToken)
@@ -48,6 +48,8 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
                     .Where(x => MinHash.GetSimilarity(x.SignatureMinhash, signatureMinHash) > minSimilarity)
                     .ToList();
 
+                Console.WriteLine(similarSimHashes.Count + similarMinHashes.Count);
+                
                 foreach (var functionSignature in similarSimHashes)
                 {
                     var similarity = SimHash.SimilarityPercentage(functionSignature.SignatureSimhash, signatureSimHash);

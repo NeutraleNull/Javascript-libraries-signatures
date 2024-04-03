@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using EFCore.BulkExtensions;
 using Infrastructure.Database;
 using Infrastructure.Parser;
 using Infrastructure.SignatureGeneration;
@@ -15,10 +16,29 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
     {
         using var scope = serviceProvider.CreateScope();
         await using var dbContext = scope.ServiceProvider.GetRequiredService<FunctionSignatureContext>();
-        DataSet = await dbContext.FunctionSignatures.AsNoTracking().ToListAsync(cancellationToken: cancellationToken);
+        var maxId = await dbContext.FunctionSignatures.AsNoTracking().MaxAsync(x => x.Id, cancellationToken: cancellationToken);
+        int numInstances = 40;
+
+        int chunkSize = maxId / numInstances;
+
+        var semaphore = new SemaphoreSlim(1);
+
+        await Parallel.ForAsync(0, maxId, cancellationToken, async (i, token) =>
+        {
+            int fromId = (i * chunkSize) + 1;
+            int toId = (i + 1) * chunkSize;
+            using var subScope = serviceProvider.CreateScope();
+            await using var subContext = subScope.ServiceProvider.GetRequiredService<FunctionSignatureContext>();
+            var temp = await subContext.FunctionSignatures.AsNoTracking().Where(x => x.Id > fromId && x.Id < toId)
+                .ToListAsync(cancellationToken: cancellationToken);
+
+            await semaphore.WaitAsync(token);
+            DataSet.AddRange(temp);
+            semaphore.Release();
+        });
     }
 
-    public async Task AnalyseFolderAsync(DirectoryInfo folderDirectory, double minSimilarity, int extractionThreshold, CancellationToken cancellationToken)
+    public async Task AnalyseFolderAsync(DirectoryInfo folderDirectory, double minSimilarityMinHash, double minSimilaritySimHash, int minOccurrencesMinHash, int minOccurrencesSimHash, int extractionThreshold, CancellationToken cancellationToken)
     {
         var files = HelperFunctions.GetJavascriptFilesFromFolder(folderDirectory);
 
@@ -41,11 +61,11 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
 
                 var similarSimHashes = DataSet
                     .AsParallel()
-                    .Where(x => SimHash.SimilarityPercentage(x.SignatureSimhash, signatureSimHash) > minSimilarity)
+                    .Where(x => SimHash.SimilarityPercentage(x.SignatureSimhash, signatureSimHash) > minSimilarityMinHash)
                     .ToList();
                 var similarMinHashes = DataSet
                     .AsParallel()
-                    .Where(x => MinHash.GetSimilarity(x.SignatureMinhash, signatureMinHash) > minSimilarity)
+                    .Where(x => MinHash.GetSimilarity(x.SignatureMinhash, signatureMinHash) > minSimilaritySimHash)
                     .ToList();
 
                 Console.WriteLine(similarSimHashes.Count + similarMinHashes.Count);
@@ -81,8 +101,8 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
             }
         }
 
-        var mostLikelyVersionsMinHashes = GetMostLikelyVersions(allFoundMinHashes, 5);
-        var mostLikelyVersionsSimHashes = GetMostLikelyVersions(allFoundSimHashes, 5);
+        var mostLikelyVersionsMinHashes = GetMostLikelyVersions(allFoundMinHashes, minOccurrencesMinHash);
+        var mostLikelyVersionsSimHashes = GetMostLikelyVersions(allFoundSimHashes, minOccurrencesSimHash);
         
         Console.WriteLine("===== Folder: {0} =======", folderDirectory);
         Console.WriteLine("~~~~~ MINHASH ~~~~~~~");

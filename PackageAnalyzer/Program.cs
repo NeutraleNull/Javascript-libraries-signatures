@@ -1,4 +1,5 @@
-﻿using Cocona;
+﻿using System.Diagnostics;
+using Cocona;
 using Infrastructure.Database;
 using Infrastructure.PackageAnalyzer;
 using Karambolo.Extensions.Logging.File;
@@ -80,10 +81,9 @@ app.AddCommand("extractFeatures", async (IServiceProvider serviceProvider, Funct
         });
     return 0;
 });
-/*
-app.AddCommand("analyzeFolders", async (string inputDir, string minSimilarity = "0.85", int parallelAnalysers = 5) =>
+
+app.AddCommand("analyzeFolders", async (IServiceProvider serviceProvider, CancellationToken token, string inputDir, double minSimilarity = 0.9) =>
 {
-    double requiredSimilarity = double.Parse(minSimilarity);
     var directoryInfo = new DirectoryInfo(inputDir);
     if (!directoryInfo.Exists)
     {
@@ -92,26 +92,28 @@ app.AddCommand("analyzeFolders", async (string inputDir, string minSimilarity = 
     }
 
     var subFolders = directoryInfo.GetDirectories("*", SearchOption.TopDirectoryOnly);
+
+    var stopWatch = new Stopwatch();
     
-    AnsiConsole.MarkupLine("[green]Caching data...[/]");
-    using var context = new FunctionSignatureContext();
-    var data = await context.FunctionSignatures.AsNoTracking().ToListAsync();
-    AnsiConsole.MarkupLine("[green]Caching data completed...[/]");
+    var packageRecognizers = new PackageRecognizer(serviceProvider);
+    stopWatch.Start();
+    AnsiConsole.MarkupLine("[yellow] Loading data.. please wait... [/]");
+    await packageRecognizers.LoadDataAsync(token);
+    AnsiConsole.MarkupLine("[yellow] Loading data completed in {0}! [/]", stopWatch.Elapsed);
+    
     
     foreach (var subFolder in subFolders)
     {
-        var files = Directory.GetFiles(subFolder.FullName, "*.*", SearchOption.AllDirectories)
-            .Where(x => x.EndsWith(".js") || x.EndsWith(".mjs"))
-            .Where(x => !x.Contains(".min.") && !x.Contains(".prod."));
-
-        await AnalyzeFiles(files.ToArray(), (float)requiredSimilarity, data);
+        stopWatch.Restart();
+        await packageRecognizers.AnalyseFolderAsync(subFolder, minSimilarity, 150, token);
+        AnsiConsole.MarkupLine("[yellow] Folder analyze completed {0}! [/]", stopWatch.Elapsed);
     }
     
     AnsiConsole.MarkupLine("[green]Processing completed.[/]");
     
     return 0;
 });
-
+/*
 app.AddCommand("analyzeFolder", async (string inputDir, float minSimilarity = 0.85f, int parallelAnalysers = 5) =>
 {
     var directoryInfo = new DirectoryInfo(inputDir);

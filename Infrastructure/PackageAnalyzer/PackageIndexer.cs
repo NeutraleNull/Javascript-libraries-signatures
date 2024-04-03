@@ -35,9 +35,7 @@ public class PackageIndexer
         
         // Get all javascript files that matter in the version folder
         // we filter out already minimized production ready stuff (we don't want to index twice, prevent duplicates yk)
-        var files = Directory.GetFiles(versionDir.FullName, "*.*", SearchOption.AllDirectories)
-            .Where(x => x.EndsWith(".js") || x.EndsWith(".mjs"))
-            .Where(x => !x.Contains(".min.") && !x.Contains(".prod."));
+        var files = HelperFunctions.GetJavascriptFilesFromFolder(packageDirectory);
 
         var librarySignatures = new List<FunctionSignature>();
 

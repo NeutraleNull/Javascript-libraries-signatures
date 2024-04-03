@@ -71,6 +71,11 @@ public static class HelperFunctions
 
         return false;
     }
-    
-    
+
+    public static IEnumerable<string> GetJavascriptFilesFromFolder(DirectoryInfo folderDirectory)
+    {
+        return Directory.GetFiles(folderDirectory.FullName, "*.*", SearchOption.AllDirectories)
+            .Where(x => x.EndsWith(".js") || x.EndsWith(".mjs"))
+            .Where(x => !x.Contains(".min.") && !x.Contains(".prod."));
+    }
 }

@@ -17,13 +17,13 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
         using var scope = serviceProvider.CreateScope();
         await using var dbContext = scope.ServiceProvider.GetRequiredService<FunctionSignatureContext>();
         var maxId = await dbContext.FunctionSignatures.AsNoTracking().MaxAsync(x => x.Id, cancellationToken: cancellationToken);
-        int numInstances = 40;
+        int numInstances = 100;
 
         int chunkSize = maxId / numInstances;
 
         var semaphore = new SemaphoreSlim(1);
 
-        await Parallel.ForAsync(0, maxId, cancellationToken, async (i, token) =>
+        await Parallel.ForAsync(0, numInstances, cancellationToken, async (i, token) =>
         {
             int fromId = (i * chunkSize) + 1;
             int toId = (i + 1) * chunkSize;

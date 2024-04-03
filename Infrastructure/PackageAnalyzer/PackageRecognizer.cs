@@ -67,8 +67,6 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
                     .AsParallel()
                     .Where(x => MinHash.GetSimilarity(x.SignatureMinhash, signatureMinHash) > minSimilaritySimHash)
                     .ToList();
-
-                Console.WriteLine(similarSimHashes.Count + similarMinHashes.Count);
                 
                 foreach (var functionSignature in similarSimHashes)
                 {

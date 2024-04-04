@@ -106,7 +106,7 @@ app.AddCommand("analyzeFolders", async (IServiceProvider serviceProvider, string
     foreach (var subFolder in subFolders)
     {
         stopWatch.Restart();
-        await packageRecognizers.AnalyseFolderAsync(subFolder, minOccurrencesMinhash, minOccurrencesSimhash, minOccurrencesMinhash, minOccurrencesSimhash, extractionThreshold, token);
+        await packageRecognizers.AnalyseFolderAsync(subFolder, minSimilarityMinhash, minSimilaritySimhash, minOccurrencesMinhash, minOccurrencesSimhash, extractionThreshold, token);
         AnsiConsole.MarkupLine("[yellow] Folder analyze completed {0}! [/]", stopWatch.Elapsed);
     }
     

@@ -42,16 +42,18 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
 
         var featureExtractor = new JavascriptFeatureExtractor();
 
+        var semaphoreMinhash = new SemaphoreSlim(1);
+        var semaphoreSimhash = new SemaphoreSlim(1);
         var allFoundMinHashes = new Dictionary<string, List<(string? Namespace, string LibName, string Version, double Similarity)>>();
         var allFoundSimHashes = new Dictionary<string, List<(string? Namespace, string LibName, string Version, double Similarity)>>();
-        
-        foreach (var file in files)
+
+        await Parallel.ForEachAsync(files, cancellationToken, async (file, token) =>
         {
             var code = await File.ReadAllTextAsync(file, cancellationToken);
             var extractFeatures = featureExtractor.ExtractFeatures(code, file, HelperFunctions.IsModule(file, code))
                 .Where(x => x.ExtractedFeatures.Count > extractionThreshold)
                 .ToList();
-            
+
             foreach (var feature in extractFeatures)
             {
                 var signatureMinHash = MinHash.ComputeMinHash(feature.ExtractedFeatures.Select(x => x.data).ToList());
@@ -59,43 +61,49 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
 
                 var similarSimHashes = DataSet
                     .AsParallel()
-                    .Where(x => SimHash.SimilarityPercentage(x.SignatureSimhash, signatureSimHash) > minSimilarityMinHash)
+                    .Where(x => SimHash.SimilarityPercentage(x.SignatureSimhash, signatureSimHash) >
+                                minSimilarityMinHash)
                     .ToList();
                 var similarMinHashes = DataSet
                     .AsParallel()
                     .Where(x => MinHash.GetSimilarity(x.SignatureMinhash, signatureMinHash) > minSimilaritySimHash)
                     .ToList();
-                
+
                 foreach (var functionSignature in similarSimHashes)
                 {
                     var similarity = SimHash.SimilarityPercentage(functionSignature.SignatureSimhash, signatureSimHash);
                     var libName = functionSignature.LibName;
                     var namespaceName = functionSignature.Namespace;
                     var version = functionSignature.Version;
-                    
+
+                    await semaphoreSimhash.WaitAsync(token);
                     if (!allFoundSimHashes.ContainsKey(libName))
                     {
                         allFoundSimHashes[libName] = [];
                     }
 
                     allFoundSimHashes[libName].Add((namespaceName, libName, version, similarity));
+                    semaphoreSimhash.Release();
                 }
-                
+
                 foreach (var functionSignature in similarMinHashes)
                 {
                     var similarity = MinHash.GetSimilarity(functionSignature.SignatureMinhash, signatureMinHash);
                     var libName = functionSignature.LibName;
                     var namespaceName = functionSignature.Namespace;
                     var version = functionSignature.Version;
-                    
+
+                    await semaphoreMinhash.WaitAsync(token);
                     if (!allFoundMinHashes.ContainsKey(libName))
                     {
                         allFoundMinHashes[libName] = [];
                     }
+
                     allFoundMinHashes[libName].Add((namespaceName, libName, version, similarity));
+                    semaphoreMinhash.Release();
                 }
             }
-        }
+        });
 
         var mostLikelyVersionsMinHashes = GetMostLikelyVersions(allFoundMinHashes, minOccurrencesMinHash);
         var mostLikelyVersionsSimHashes = GetMostLikelyVersions(allFoundSimHashes, minOccurrencesSimHash);
@@ -118,8 +126,8 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
             Dictionary<string, List<(string? Namespace, string LibName, string Version, double Similarity)>> extractedFeatures, int minOccurrences)
     {
         var mostLikelyVersions = new Dictionary<string, (string LibName, string? Namespace, string Version, double Similarity, int occurrences)>();
-
-        foreach (var feature  in extractedFeatures)
+        
+        Parallel.ForEach(extractedFeatures, (feature) =>
         {
             var groupedVersions = feature.Value.GroupBy(x => x.Version);
             var versionStats = groupedVersions.Select(g => (
@@ -130,7 +138,8 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
 
             var filteredVersions = versionStats.Where(x => x.Occurrences >= minOccurrences);
 
-            var valueTuples = filteredVersions as (string Version, double Similarity, int Occurrences)[] ?? filteredVersions.ToArray();
+            var valueTuples = filteredVersions as (string Version, double Similarity, int Occurrences)[] ??
+                              filteredVersions.ToArray();
             if (valueTuples.Any())
             {
                 var maxOccurrences = valueTuples.Max(x => x.Occurrences);
@@ -147,7 +156,7 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
                     );
                 }
             }
-        }
+        });
 
         return mostLikelyVersions;
     }

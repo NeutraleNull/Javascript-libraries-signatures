@@ -21,21 +21,19 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
 
         int chunkSize = maxId / numInstances;
 
-        var semaphore = new SemaphoreSlim(1);
+        var query = Enumerable.Range(0, numInstances)
+            .AsParallel()
+            .AsOrdered()
+            .SelectMany(i =>
+            {
+                int fromId = (i * chunkSize) + 1;
+                int toId = (i == numInstances - 1) ? maxId : ((i + 1) * chunkSize);
+                using var subScope = serviceProvider.CreateScope();
+                using var subContext = subScope.ServiceProvider.GetRequiredService<FunctionSignatureContext>();
+                return subContext.FunctionSignatures.AsNoTracking().Where(x => x.Id > fromId && x.Id <= toId).ToList();
+            });
 
-        await Parallel.ForAsync(0, numInstances, cancellationToken, async (i, token) =>
-        {
-            int fromId = (i * chunkSize) + 1;
-            int toId = (i + 1) * chunkSize;
-            using var subScope = serviceProvider.CreateScope();
-            await using var subContext = subScope.ServiceProvider.GetRequiredService<FunctionSignatureContext>();
-            var temp = await subContext.FunctionSignatures.AsNoTracking().Where(x => x.Id > fromId && x.Id < toId)
-                .ToListAsync(cancellationToken: cancellationToken);
-
-            await semaphore.WaitAsync(token);
-            DataSet.AddRange(temp);
-            semaphore.Release();
-        });
+        DataSet = query.ToList();
     }
 
     public async Task AnalyseFolderAsync(DirectoryInfo folderDirectory, double minSimilarityMinHash, double minSimilaritySimHash, int minOccurrencesMinHash, int minOccurrencesSimHash, int extractionThreshold, CancellationToken cancellationToken)

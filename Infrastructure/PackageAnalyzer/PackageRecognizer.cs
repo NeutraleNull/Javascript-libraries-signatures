@@ -125,6 +125,7 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
         GetMostLikelyVersions(
             Dictionary<string, List<(string? Namespace, string LibName, string Version, double Similarity)>> extractedFeatures, int minOccurrences)
     {
+        var semaphore = new SemaphoreSlim(1);
         var mostLikelyVersions = new Dictionary<string, (string LibName, string? Namespace, string Version, double Similarity, int occurrences)>();
         
         Parallel.ForEach(extractedFeatures, (feature) =>
@@ -147,6 +148,7 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
 
                 if (mostLikelyVersion != default)
                 {
+                    semaphore.Wait();
                     mostLikelyVersions[feature.Key] = (
                         feature.Key,
                         feature.Value.First().Namespace,
@@ -154,6 +156,7 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
                         mostLikelyVersion.Similarity,
                         mostLikelyVersion.Occurrences
                     );
+                    semaphore.Release();
                 }
             }
         });

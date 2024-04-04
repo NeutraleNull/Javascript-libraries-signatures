@@ -62,11 +62,11 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
                 var similarSimHashes = DataSet
                     .AsParallel()
                     .Where(x => SimHash.SimilarityPercentage(x.SignatureSimhash, signatureSimHash) >
-                                minOccurrencesSimHash)
+                                minSimilaritySimHash)
                     .ToList();
                 var similarMinHashes = DataSet
                     .AsParallel()
-                    .Where(x => MinHash.GetSimilarity(x.SignatureMinhash, signatureMinHash) > minOccurrencesMinHash)
+                    .Where(x => MinHash.GetSimilarity(x.SignatureMinhash, signatureMinHash) > minSimilarityMinHash)
                     .ToList();
 
                 foreach (var functionSignature in similarSimHashes)

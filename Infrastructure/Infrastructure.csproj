@@ -9,14 +9,11 @@
     <ItemGroup>
       <PackageReference Include="Acornima" Version="0.9.1" />
       <PackageReference Include="Acornima.Extras" Version="0.9.1" />
-      <PackageReference Include="EFCore.BulkExtensions.PostgreSql" Version="8.0.2" />
       <PackageReference Include="EFCore.NamingConventions" Version="8.0.3" />
-      <PackageReference Include="Esprima" Version="3.0.4" />
       <PackageReference Include="FastHashes" Version="3.5.0" />
       <PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.5.0" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.3" />
       <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
-      <PackageReference Include="MinHashSharp" Version="1.1.1" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.2" />
       <PackageReference Include="Spectre.Console" Version="0.48.1-preview.0.35" />
     </ItemGroup>

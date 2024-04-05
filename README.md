@@ -9,7 +9,7 @@ Dieses Tool wurde im Rahmen der Projektgruppe "Erkennung von JavaScript-Biblioth
 3. [Installation](#installation)
 4. [Verwendung](#verwendung)
 5. [Klassenübersicht](#Klassenübersicht)
-6. [Verwendete Bibliotheken](#Verwendete Bibliotheken)
+6. [Verwendete Bibliotheken](#Verwendete-Bibliotheken)
 7. [Lizenz](#lizenz)
 
 ## Einleitung

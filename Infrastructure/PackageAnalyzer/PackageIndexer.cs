@@ -1,9 +1,6 @@
-﻿using System.ComponentModel;
-using EFCore.BulkExtensions;
-using Infrastructure.Database;
+﻿using Infrastructure.Database;
 using Infrastructure.Parser;
 using Infrastructure.SignatureGeneration;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -12,6 +9,15 @@ namespace Infrastructure.PackageAnalyzer;
 
 public class PackageIndexer
 {
+    /// <summary>
+    /// First abstraction layer, we split the package into its version folders. and process these versions in parallel.
+    /// </summary>
+    /// <param name="packageDirectory"></param>
+    /// <param name="maxParallelVersionIndexer"></param>
+    /// <param name="namespaceName"></param>
+    /// <param name="serviceProvider"></param>
+    /// <param name="token"></param>
+    /// <param name="progressTask"></param>
     public async Task IndexPackageAsync(DirectoryInfo packageDirectory, int maxParallelVersionIndexer, string? namespaceName, IServiceProvider serviceProvider, CancellationToken token,  ProgressTask progressTask)
     {
         var versionDirs = packageDirectory.GetDirectories();
@@ -25,6 +31,15 @@ public class PackageIndexer
         progressTask.StopTask();
     }
 
+    /// <summary>
+    /// Proccesses a version folder by first getting the JS-Files and then calculating the signatures.
+    /// </summary>
+    /// <param name="packageDirectory"></param>
+    /// <param name="versionDir"></param>
+    /// <param name="namespaceName"></param>
+    /// <param name="serviceProvider"></param>
+    /// <param name="cancellationToken"></param>
+    /// <param name="progressTask"></param>
     private async Task ProcessVersionAsync(DirectoryInfo packageDirectory, DirectoryInfo versionDir,
         string? namespaceName, IServiceProvider serviceProvider, CancellationToken cancellationToken,
         ProgressTask progressTask)
@@ -33,17 +48,15 @@ public class PackageIndexer
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<PackageIndexer>>();
         await using var database = scope.ServiceProvider.GetRequiredService<FunctionSignatureContext>();
         
-        // Get all javascript files that matter in the version folder
-        // we filter out already minimized production ready stuff (we don't want to index twice, prevent duplicates yk)
         var files = HelperFunctions.GetJavascriptFilesFromFolder(packageDirectory);
 
         var librarySignatures = new List<FunctionSignature>();
 
         foreach (var file in files)
         {
+            // the underlying Lib for building the AST can fail for various reasons. We need to make sure we catch it here
             try
             {
-
                 var featureExtractor = new JavascriptFeatureExtractor();
                 var code = await File.ReadAllTextAsync(file, cancellationToken);
                 var features = featureExtractor.ExtractFeatures(code, file, HelperFunctions.IsModule(file, code));
@@ -69,6 +82,7 @@ public class PackageIndexer
         int retryAttempt = 0;
         repeat:
         
+        // Database operations can fail or slow down on a heavily beaten system
         try
         {
             await database.FunctionSignatures.AddRangeAsync(librarySignatures, cancellationToken);
@@ -76,6 +90,9 @@ public class PackageIndexer
         } 
         catch (Exception ex)
         {
+            // we need to make sure we never lose any data! We already have a retry policy with random backoffs, but we
+            // need to make absolutely sure we will not lose any data to a database hiccup.
+            // we still provide logging to notify for any critical database fails.
             if (retryAttempt++ > 10)
             {
                 logger.LogCritical("Failed insert signatures to database for folder: {0} for {1} times!", versionDir.FullName, retryAttempt);
@@ -90,6 +107,11 @@ public class PackageIndexer
         
     }
 
+    /// <summary>
+    /// This function translate the found data into the Database FunctionSignature Model.
+    /// </summary>
+    /// <param name="functions"></param>
+    /// <returns></returns>
     private IEnumerable<FunctionSignature> ProcessFunctions(List<Function> functions)
     {
         foreach (var function in functions)

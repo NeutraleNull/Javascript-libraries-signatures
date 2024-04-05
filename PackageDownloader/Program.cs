@@ -11,6 +11,7 @@ AnsiConsole.WriteLine("Starting up");
 
 var app = CoconaApp.Create();
 
+// handles the code path for choosing the download method
 app.AddCommand("download",
     async (string inputFile, string outputFolder, DateTime maxVersionAge, ushort parallelDownloads = 5,
         bool noPreRelease = false, bool extract = false) =>
@@ -93,6 +94,7 @@ app.AddCommand("download",
     return 0;
 });
 
+// handles the code path for choosing the extract method
 app.AddCommand("extract", async (string folder, ushort parallelExtractions = 50) =>
 {
     AnsiConsole.WriteLine($"Start extraction. Scanning folder: {folder}");

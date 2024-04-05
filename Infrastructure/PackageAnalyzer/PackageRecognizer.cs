@@ -1,6 +1,4 @@
-﻿using System.Collections.Concurrent;
-using EFCore.BulkExtensions;
-using Infrastructure.Database;
+﻿using Infrastructure.Database;
 using Infrastructure.Parser;
 using Infrastructure.SignatureGeneration;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +10,13 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
 {
     private List<FunctionSignature> DataSet { get; set; } = new();
 
+    /// <summary>
+    /// The idea here is to spread the query into chunks that multiple workers can handle in parallel because the bottleneck is the speed
+    /// a database return results over the TCP Bus and entity framework doing the ORM.
+    /// By doing this with multiple DatabaseContext we can archive a huge scaling, even though it is not linear.
+    /// The time spend was reduced from 15min to 3min using roughly 20 workers. There isn't much speed gain after 10 workers still.
+    /// </summary>
+    /// <param name="cancellationToken"></param>
     public async Task LoadDataAsync(CancellationToken cancellationToken)
     {
         using var scope = serviceProvider.CreateScope();
@@ -35,13 +40,27 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
 
         DataSet = query.ToList();
     }
-
+    
+    /// <summary>
+    /// Analyse the folder provided by finding first all required JS files.
+    /// In a next step all files are parsed in parallel and the features get extracted and min and simhashes are created.
+    /// Then we query the previously downloaded DataSet (also in parallel!) and try to match ever type of signature with the as argument provided minSimilarities
+    /// At last the most likely version is calculated and returned to the user as verbose console logging.
+    /// </summary>
+    /// <param name="folderDirectory"></param>
+    /// <param name="minSimilarityMinHash"></param>
+    /// <param name="minSimilaritySimHash"></param>
+    /// <param name="minOccurrencesMinHash"></param>
+    /// <param name="minOccurrencesSimHash"></param>
+    /// <param name="extractionThreshold"></param>
+    /// <param name="cancellationToken"></param>
     public async Task AnalyseFolderAsync(DirectoryInfo folderDirectory, double minSimilarityMinHash, double minSimilaritySimHash, int minOccurrencesMinHash, int minOccurrencesSimHash, int extractionThreshold, CancellationToken cancellationToken)
     {
         var files = HelperFunctions.GetJavascriptFilesFromFolder(folderDirectory);
 
         var featureExtractor = new JavascriptFeatureExtractor();
 
+        // semaphores to provide thread-safety as there isn't a thread-safe implementation by .net like ConcurrentBag for Lists.
         var semaphoreMinhash = new SemaphoreSlim(1);
         var semaphoreSimhash = new SemaphoreSlim(1);
         var allFoundMinHashes = new Dictionary<string, List<(string? Namespace, string LibName, string Version, double Similarity)>>();
@@ -76,6 +95,7 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
                     var namespaceName = functionSignature.Namespace;
                     var version = functionSignature.Version;
 
+                    // this is the parallel accessed part protected by semaphores
                     await semaphoreSimhash.WaitAsync(token);
                     if (!allFoundSimHashes.ContainsKey(libName))
                     {
@@ -92,7 +112,8 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
                     var libName = functionSignature.LibName;
                     var namespaceName = functionSignature.Namespace;
                     var version = functionSignature.Version;
-
+    
+                    // same here for minhash
                     await semaphoreMinhash.WaitAsync(token);
                     if (!allFoundMinHashes.ContainsKey(libName))
                     {
@@ -108,6 +129,8 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
         var mostLikelyVersionsMinHashes = GetMostLikelyVersions(allFoundMinHashes, minOccurrencesMinHash);
         var mostLikelyVersionsSimHashes = GetMostLikelyVersions(allFoundSimHashes, minOccurrencesSimHash);
         
+        // you could also update the code to return it to the function caller instead of printing it here.
+        // I did this just for simplicity... Kinda dumb because it needed it to pass later again... oh well
         Console.WriteLine("===== Folder: {0} =======", folderDirectory);
         Console.WriteLine("~~~~~ MINHASH ~~~~~~~");
         foreach (var element in mostLikelyVersionsMinHashes)
@@ -125,11 +148,14 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
         GetMostLikelyVersions(
             Dictionary<string, List<(string? Namespace, string LibName, string Version, double Similarity)>> extractedFeatures, int minOccurrences)
     {
+        // this semaphore is to prevent conflicts with the mostLikelyVersions dic in threaded scenario
+        // consider removing the parallel as it isn't really a hot path
         var semaphore = new SemaphoreSlim(1);
         var mostLikelyVersions = new Dictionary<string, (string LibName, string? Namespace, string Version, double Similarity, int occurrences)>();
         
         Parallel.ForEach(extractedFeatures, (feature) =>
         {
+            // group together versions and count the occurences
             var groupedVersions = feature.Value.GroupBy(x => x.Version);
             var versionStats = groupedVersions.Select(g => (
                 Version: g.Key,
@@ -138,7 +164,7 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
             ));
 
             var filteredVersions = versionStats.Where(x => x.Occurrences >= minOccurrences);
-
+            
             var valueTuples = filteredVersions as (string Version, double Similarity, int Occurrences)[] ??
                               filteredVersions.ToArray();
             if (valueTuples.Any())
@@ -148,6 +174,7 @@ public class PackageRecognizer(IServiceProvider serviceProvider)
 
                 if (mostLikelyVersion != default)
                 {
+                    // here is where the parallel access to the dic kicks in
                     semaphore.Wait();
                     mostLikelyVersions[feature.Key] = (
                         feature.Key,

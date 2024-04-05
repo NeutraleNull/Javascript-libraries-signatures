@@ -72,6 +72,12 @@ public static class HelperFunctions
         return false;
     }
 
+    /// <summary>
+    /// Get all javascript files that matter in the version folder
+    /// we filter out already minimized production ready stuff (we don't want to index twice, prevent duplicates yk)
+    /// </summary>
+    /// <param name="folderDirectory"></param>
+    /// <returns></returns>
     public static IEnumerable<string> GetJavascriptFilesFromFolder(DirectoryInfo folderDirectory)
     {
         return Directory.GetFiles(folderDirectory.FullName, "*.*", SearchOption.AllDirectories)

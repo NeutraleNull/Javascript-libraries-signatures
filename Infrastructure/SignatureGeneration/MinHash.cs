@@ -1,8 +1,5 @@
-﻿
-using System.Security.Cryptography;
-using System.Text;
+﻿using System.Text;
 using FastHashes;
-using MathNet.Numerics.Random;
 
 namespace Infrastructure.SignatureGeneration;
 
@@ -24,6 +21,12 @@ public static class MinHash
         }
     }
 
+    /// <summary>
+    /// Computes the minhash by first generating a hash (using the cached hash functions) for each feature in
+    /// the list and then updating the output vector to use the minimum. 
+    /// </summary>
+    /// <param name="features"></param>
+    /// <returns></returns>
     public static int[] ComputeMinHash(List<string> features)
     {
         int[] minHashValues = Enumerable.Repeat(int.MaxValue, NumHashFunctions).ToArray();
@@ -41,6 +44,11 @@ public static class MinHash
         return minHashValues;
     }
 
+    /// <summary>
+    /// Calculates the hash value using murmurhash. The coefficients are required to "randomise" the hash functions.
+    /// </summary>
+    /// <param name="feature"></param>
+    /// <returns></returns>
     private static int[] GetHashValues(string feature)
     {
         int[] hashValues = new int[NumHashFunctions];
